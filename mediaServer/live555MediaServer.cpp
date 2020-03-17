@@ -21,10 +21,17 @@ along with this library; if not, write to the Free Software Foundation, Inc.,
 #include "DynamicRTSPServer.hh"
 #include "version.hh"
 
+#include "GroupsockHelper.hh"
+
 int main(int argc, char** argv) {
   // Begin by setting up our usage environment:
   TaskScheduler* scheduler = BasicTaskScheduler::createNew();
   UsageEnvironment* env = BasicUsageEnvironment::createNew(*scheduler);
+
+  if (argc > 1) {
+	  // 
+	  ReceivingInterfaceAddr = inet_addr(argv[1]);
+  }
 
   UserAuthenticationDatabase* authDB = NULL;
 #ifdef ACCESS_CONTROL
