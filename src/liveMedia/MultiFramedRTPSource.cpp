@@ -23,7 +23,8 @@ along with this library; if not, write to the Free Software Foundation, Inc.,
 #include "RTCP.hh"
 #include "GroupsockHelper.hh"
 #include <string.h>
-
+#include <stdio.h>
+#include <Windows.h>
 ////////// ReorderingPacketBuffer definition //////////
 
 class ReorderingPacketBuffer {
@@ -74,6 +75,7 @@ MultiFramedRTPSource
 
   // Try to use a big receive buffer for RTP:
   increaseReceiveBufferTo(env, RTPgs->socketNum(), 50*1024);
+  flogSize = 0;
 }
 
 void MultiFramedRTPSource::reset() {
@@ -87,6 +89,14 @@ void MultiFramedRTPSource::reset() {
 
 MultiFramedRTPSource::~MultiFramedRTPSource() {
   delete fReorderingBuffer;
+
+  char fn[256];
+  sprintf(fn, "frame_receive_log_%d", rtpPayloadFormat());
+  FILE* fp = fopen(fn, "wt");
+  for (size_t i = 0; i < flogSize; i++) {
+	  fprintf(fp, "%8d %6d %llu\n", flog[i].seq, flog[i].frameSize, flog[i].tm);
+  }
+  fclose(fp);
 }
 
 Boolean MultiFramedRTPSource
@@ -195,6 +205,9 @@ void MultiFramedRTPSource::doGetNextFrame1() {
 		<< fSavedMaxSize << ").  "
 		<< fNumTruncatedBytes << " bytes of trailing data will be dropped!\n";
       }
+      size_t i = flogSize++;
+      flog[i].frameSize = fFrameSize;
+      flog[i].seq = curPacketRTPSeqNum();
       // Call our own 'after getting' function, so that the downstream object can consume the data:
       if (fReorderingBuffer->isEmpty()) {
 	// Common case optimization: There are no more queued incoming packets, so this code will not get
@@ -206,6 +219,7 @@ void MultiFramedRTPSource::doGetNextFrame1() {
 	nextTask() = envir().taskScheduler().scheduleDelayedTask(0,
 								 (TaskFunc*)FramedSource::afterGetting, this);
       }
+      ::QueryPerformanceCounter((LARGE_INTEGER*)&flog[i].tm);
     } else {
       // This packet contained fragmented data, and does not complete
       // the data that the client wants.  Keep getting data:

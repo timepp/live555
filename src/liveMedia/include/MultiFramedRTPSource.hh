@@ -76,6 +76,14 @@ private:
 
   // A buffer to (optionally) hold incoming pkts that have been reorderered
   class ReorderingPacketBuffer* fReorderingBuffer;
+
+  struct FrameArrivalInfo {
+	  int seq;
+          unsigned int frameSize;
+	  unsigned long long tm;
+  };
+  FrameArrivalInfo flog[1000000];
+  size_t flogSize;
 };
 
 

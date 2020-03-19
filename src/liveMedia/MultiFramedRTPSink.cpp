@@ -21,6 +21,9 @@ along with this library; if not, write to the Free Software Foundation, Inc.,
 
 #include "MultiFramedRTPSink.hh"
 #include "GroupsockHelper.hh"
+#include <stdio.h>
+
+#include <windows.h>
 
 ////////// MultiFramedRTPSink //////////
 
@@ -43,6 +46,8 @@ void MultiFramedRTPSink::setPacketSizes(unsigned preferredPacketSize,
 #define RTP_PAYLOAD_PREFERRED_SIZE ((RTP_PAYLOAD_MAX_SIZE) < 1000 ? (RTP_PAYLOAD_MAX_SIZE) : 1000)
 #endif
 
+static LARGE_INTEGER pfreq;
+
 MultiFramedRTPSink::MultiFramedRTPSink(UsageEnvironment& env,
 				       Groupsock* rtpGS,
 				       unsigned char rtpPayloadType,
@@ -54,10 +59,24 @@ MultiFramedRTPSink::MultiFramedRTPSink(UsageEnvironment& env,
     fOutBuf(NULL), fCurFragmentationOffset(0), fPreviousFrameEndedFragmentation(False),
     fOnSendErrorFunc(NULL), fOnSendErrorData(NULL) {
   setPacketSizes((RTP_PAYLOAD_PREFERRED_SIZE), (RTP_PAYLOAD_MAX_SIZE));
+  flogSize = 0;
+  ::QueryPerformanceFrequency(&pfreq);
 }
 
 MultiFramedRTPSink::~MultiFramedRTPSink() {
   delete fOutBuf;
+
+  if (flogSize > 0) {
+	  char fn[256];
+	  sprintf(fn, "frame_send_log_%d", rtpPayloadType());
+	  FILE* fp = fopen(fn, "wt");
+          fprintf(fp, "%llu\n", pfreq.QuadPart);
+	  for (size_t i = 0; i < flogSize; i++) {
+		  fprintf(fp, "%8d%06d %6d %llu\n", 
+                          flog[i].presentationtime.tv_sec, flog[i].presentationtime.tv_usec, flog[i].frameSize, flog[i].generatetime);
+	  }
+	  fclose(fp);
+  }
 }
 
 void MultiFramedRTPSink
@@ -243,6 +262,11 @@ void MultiFramedRTPSink
     // Record the fact that we're starting to play now:
     gettimeofday(&fNextSendTime, NULL);
   }
+
+  size_t i = flogSize++;
+  flog[i].presentationtime = presentationTime;
+  flog[i].frameSize = frameSize;
+  ::QueryPerformanceCounter((LARGE_INTEGER*)&flog[i].generatetime);
 
   fMostRecentPresentationTime = presentationTime;
   if (fInitialPresentationTime.tv_sec == 0 && fInitialPresentationTime.tv_usec == 0) {

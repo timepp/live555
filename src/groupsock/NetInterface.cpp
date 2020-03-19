@@ -82,8 +82,11 @@ DirectedNetInterface* DirectedNetInterfaceSet::Iterator::next() {
 
 
 ////////// Socket //////////
-
-int Socket::DebugLevel = 3; // default value
+#ifdef SOCKET_DEBUGLEVEL
+	int Socket::DebugLevel = SOCKET_DEBUGLEVEL; // default value
+#else
+	int Socket::DebugLevel = 1; // default value
+#endif
 
 Socket::Socket(UsageEnvironment& env, Port port)
   : fEnv(DefaultUsageEnvironment != NULL ? *DefaultUsageEnvironment : env), fPort(port) {

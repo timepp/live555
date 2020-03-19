@@ -135,6 +135,14 @@ private:
 
   onSendErrorFunc* fOnSendErrorFunc;
   void* fOnSendErrorData;
+
+  struct FrameInfo {
+	  timeval presentationtime;
+          unsigned int frameSize;
+	  unsigned long long generatetime;
+  };
+  FrameInfo flog[1000000];
+  size_t flogSize;
 };
 
 #endif
